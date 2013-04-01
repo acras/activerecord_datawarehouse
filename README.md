@@ -186,3 +186,61 @@ As you can imagine, the key here is in the @attribute_mappings attribute. It is 
 * Time: Same as date, but to the Time Dimension
 * Dimension: When it refers to another dimension.
 * Function: Last resource, you want to write a funcion to get this field value. Your function will receive the entire record to handle as it wished. Look at is_dimensioned? above.
+
+Slowly changing dimensions type 1
+==========
+
+activerecord_datawarehouse provides a class named SlowlyChangingDimension1. It is intended to handle this kind of changing dimensions.
+In your project you will need to inherit it to add some behaviour. The example bellow shows it:
+
+```ruby
+module Datawarehouse
+
+  class FLSlowlyChangingDimension1 < SlowlyChangingDimension1
+
+    attr_accessor :store_chain_id
+
+    def initialize
+      @model_field_mappings = [
+          [Department,
+           [[ProductDimension, 'department_id', 'department_name', 'name']]
+          ]
+      ]
+    end
+
+    def get_new_records(model_class)
+      #if you need to, this is your chance to change the way it gets new records
+      super(model_class)
+    end
+
+    def update_all_for_store_chain(store_chain_id)
+      @store_chain_id = store_chain_id
+      update_all
+    end
+
+    def get_conditions(model_class)
+      r = super(model_class)
+      r[0] += ' AND (store_chain_id = ?)'
+      r << @store_chain_id
+      r
+    end
+
+    def set_or_create(model_class, version)
+      r = super(model_class, version)
+      r.store_chain_id = @store_chain_id
+      r.save
+      r
+    end
+
+    def get_record_by_model(model_class)
+      tn = model_class.table_name
+      LastVersionMap.first(
+          :conditions => ['(table_name like ?) AND (store_chain_id = ?)', tn, @store_chain_id])
+    end
+
+  end
+end
+```
+
+In the example above we have changed the way the gem gets records to include the store chain attribute. Furthermore we are setting the tuples that will tell the engine what should be looked at and updated as a slow changing dimension.
+@model_field_mappings defines this.
