@@ -1,0 +1,3 @@
+class Datawarehouse::FactExtractor
+
+end
