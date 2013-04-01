@@ -66,6 +66,7 @@ Product
   description
   brand_name
   department_id
+  main_product_id
   version
   
 Department
@@ -81,9 +82,27 @@ ProductDimension
   description
   brand_name
   department_description
+  is_dimensioned
 ```
 
-activerecord_datawarehouse provides a basic class to define how data will be extracted, the DimensionExtractor class
+in the database you have to have some control fields, as shown bellow
+
+```ruby
+  create_table "product_dimensionss" do |t|
+    t.integer "store_chain_id", :null => false
+    t.string "code",  :limit => 100, :null => false
+    t.string "barcode", :limit => 100, :null => false
+    t.string "brand_name", :limit => 100, :null => false
+    t.boolean "is_dimensioned"
+    t.string "department_description", :limit => 100, :null => false
+    t.integer "department_id"
+    t.integer "version"
+  end
+```
+
+ok, as you can see there´s a department_id in the field list. It is used to make a link to the department record in the transactional database. This is half the way to handle changes in the transactional database. Let´s say the department description is edited, but not the product record, activerecord_datawarehouse knows that it must update this dimension based on a helper table named last_version_maps, that keeps track of last version imported from every model in transactiona database and replicates changes to dw models.
+
+Now let´s extract some data. activerecord_datawarehouse provides a basic class to define how data will be extracted, the DimensionExtractor class
 
 First of all you can inherit from this class to set some behaviour, see the commented class bellow. FLDimensionExtractor will be the super class for every dimension extractor class in this application
 Note: Again, for the sake of organization we always use Datawarehouse module.
@@ -124,3 +143,46 @@ module Datawarehouse
     end
   end
 ```
+
+Once we have our main class setted, let´s write our extractor. We recommend that you define all your datawarehouse models under da Datawarehouse module and set the extrator as a subclass of the activerecord datawarehouse model. For our product example it would be like
+
+```ruby
+module Datawarehouse
+  class ProductDimension < ActiveRecord::Base
+    establish_connection "dw_#{Rails.env}" #we use a sepparate database
+
+    class ProductDimensionExtractor < FocusLojasDimensionExtractor
+
+      def initialize
+        @origin_model = Product #from wich model at the transactional database we will be extracting
+        @destination_model = ProductDimension #to wich model in the datawarehouse database we will be extracting
+        
+        @attribute_mappings = {
+            description: 'description',
+            code: 'code',
+            barcode: 'barcode',
+            original_id: 'id',
+            version: 'version',
+            store_chain_id: 'store_chain_id',
+            is_dimensioned: [:function, 'is_dimensioned?'],
+            department_name: 'department.name',
+            department_id: 'department_id',
+        }
+      end
+
+      def is_dimensioned?(r)
+        !r.main_product.nil?
+      end
+
+    end
+  end
+end
+```
+
+As you can imagine, the key here is in the @attribute_mappings attribute. It is a hash that defines how data is extracted from the transactional model to the datawarehouse model. It has some types:
+
+* Single: Defined as a simple string, it goes directly to an attribute of the class. It supports nested attributes, so you can use belongs_tos in here. Like in the department.name example.
+* Date: Refers to the date dimension. It is defined as an array of 2 elements where the first one is the type :date and the second one is the name of the date field. The gem will find the proper date dimension record to link to.
+* Time: Same as date, but to the Time Dimension
+* Dimension: When it refers to another dimension.
+* Function: Last resource, you want to write a funcion to get this field value. Your function will receive the entire record to handle as it wished. Look at is_dimensioned? above.
