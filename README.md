@@ -10,7 +10,7 @@ It´s main features are:
 * DateDimension basic generation class
 * TimeDimension basic generation class
 * Dimension extractor basic class
-* Handle of slow changing dimensions of type 1
+* Handle of slowly changing dimensions of type 1
 * Fact extractor basic class
 * Migration of the datawarehouse database with sepparate migrations from transactional database
 
