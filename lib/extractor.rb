@@ -4,7 +4,7 @@ module Datawarehouse
     attr_accessor :origin_model, :destination_model, :attribute_mappings
 
     def extract
-      puts "  Inicializando modelo #{@destination_model}"
+      puts "  Initializing model #{@destination_model}"
       before_extract if defined? before_extract
       ensure_nulls if defined? ensure_nulls
       puts "  ..Getting new records"

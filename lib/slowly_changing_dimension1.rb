@@ -18,7 +18,7 @@ class SlowlyChangingDimension1
     mappings.each do |mapping|
       value = r.send(mapping[3])
       mapping[0].update_all(
-          "#{mapping[2]} = \"#{value}\"",
+          ["#{mapping[2]} = ?", value],
           ["#{mapping[1]} = ?", r.id])
     end
     set_or_create(r.class, r.version)

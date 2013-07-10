@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name = %q{activerecord_datawarehouse}
-  s.version = "1.0.0"
-  s.date = %q{2013-04-01}
+  s.version = "1.0.1"
+  s.date = %q{2013-07-10}
    s.authors = ["Ricardo Acras"]
   s.email = %q{ricardo@acras.com.br}
   s.summary = %q{Datawarehouse extractors and common dimension generators}
