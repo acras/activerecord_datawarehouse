@@ -17,7 +17,5 @@ namespace :datawarehouse do
         ActiveRecord::Migrator.down("db/migrate/dw_migrations/")
       end
     end
-
-
   end
 end

@@ -8,14 +8,18 @@ module Datawarehouse
       before_extract if defined? before_extract
       ensure_nulls if defined? ensure_nulls
       puts "  ..Getting new records"
-      record_set = get_new_records
-      puts "  ..Got #{record_set.count.to_s}"
-      i = 1
-      record_set.each do |r|
-        puts "Importing #{r.id.to_s} #{i.to_s}/#{record_set.count.to_s}"
-        update_dimension_main_attributes(r)
-        i += 1
-      end
+      continue = true
+      begin 
+        record_set = get_new_records
+        puts "  ..Got #{record_set.count.to_s}"
+        i = 1
+        record_set.each do |r|
+          puts "Importing #{r.id.to_s} #{i.to_s}/#{record_set.count.to_s}"
+          update_dimension_main_attributes(r)
+          i += 1
+        end
+        continue = record_set.length == max_records
+      end while continue
     end
 
     protected
@@ -95,13 +99,18 @@ module Datawarehouse
     def get_conditions
       ['(version > ?)', last_version]
     end
+    
+    def max_records
+      1000
+    end
 
   #get new and updated records, considering only the main model from the dimension
     def get_new_records
       conditions = get_conditions
       @origin_model.all(
           :conditions => conditions,
-          :order => 'version ASC')
+          :order => 'version ASC',
+          :limit => max_records)
     end
   end
 end
