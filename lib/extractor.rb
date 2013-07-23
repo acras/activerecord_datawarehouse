@@ -14,7 +14,7 @@ module Datawarehouse
         puts "  ..Got #{record_set.count.to_s}"
         i = 1
         record_set.each do |r|
-          puts "Importing #{r.id.to_s} #{i.to_s}/#{record_set.count.to_s}"
+          puts "Importing #{@destination_model} id: #{r.id.to_s} - #{i.to_s}/#{record_set.count.to_s}"
           update_dimension_main_attributes(r)
           i += 1
         end
