@@ -7,7 +7,7 @@ module Datawarehouse
       puts "  Initializing model #{@destination_model}"
       before_extract if defined? before_extract
       ensure_nulls if defined? ensure_nulls
-      puts "  ..Getting new records"
+      puts "  ..Getting new records, limited by #{max_records.to_s}"
       continue = true
       begin 
         record_set = get_new_records
