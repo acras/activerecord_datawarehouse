@@ -41,6 +41,13 @@ module Datawarehouse
       r.send(field_name)
     end
 
+    def extract_by_id(id)
+      puts "=> Importing #{@origin_model} by id: #{id.to_s}"
+      r = @origin_model.find(id)
+      update_dimension_main_attributes(r)
+     end
+
+
     def translate_function(rec, func_name)
       send(func_name, rec)
     end
