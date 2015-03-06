@@ -9,7 +9,7 @@ module Datawarehouse
       ensure_nulls if defined? ensure_nulls
       puts "  ..Getting new records, limited by #{max_records.to_s}"
       continue = true
-      begin 
+      begin
         record_set = get_new_records
         puts "  ..Got #{record_set.count.to_s}"
         i = 1
@@ -22,6 +22,12 @@ module Datawarehouse
       end while continue
     end
 
+    def extract_by_id(id)
+      puts "=> Importing #{@origin_model} by id: #{id.to_s}"
+      r = @origin_model.find(id)
+      update_dimension_main_attributes(r)
+    end
+    
     protected
 
     def ensure_nulls;end
@@ -40,13 +46,6 @@ module Datawarehouse
     def translate_single_string(r, field_name)
       r.send(field_name)
     end
-
-    def extract_by_id(id)
-      puts "=> Importing #{@origin_model} by id: #{id.to_s}"
-      r = @origin_model.find(id)
-      update_dimension_main_attributes(r)
-     end
-
 
     def translate_function(rec, func_name)
       send(func_name, rec)
@@ -106,7 +105,7 @@ module Datawarehouse
     def get_conditions
       ['(version > ?)', last_version]
     end
-    
+
     def max_records
       1000
     end
