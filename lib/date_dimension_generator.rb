@@ -1,12 +1,12 @@
 #coding: utf-8
 
 class DateDimensionGenerator
-  
+
   attr_accessor :initial_date, :final_date, :dimension_class
 
   def generate
     #criar a data nula
-    @dimension_class.create(:descriptive_date => 'Data não informada') unless @dimension_class.find_by_date
+    @dimension_class.create(:descriptive_date => 'Data não informada') unless @dimension_class.where(date: nil)
     #criar as datas na faixa solicitada
     initial_date.upto(final_date) do |d|
       puts '--Generating ' + d.strftime('%d/%m/%Y') + '--'
@@ -22,7 +22,7 @@ class DateDimensionGenerator
 
     end
   end
-  
+
   def date_to_dimension(d)
     r = {}
     r[:date] = d
@@ -35,24 +35,24 @@ class DateDimensionGenerator
     r[:numeric_day_in_month] = d.day
     r[:bimester] = (d.month+1) / 2
     r[:semester] = (d.month <= 6) ? 1 : 2
-    r[:quarter] = (d.month+3) / 
+    r[:quarter] = (d.month+3) /
     r[:numeric_day_in_year] = d.yday
     r[:numeric_year] = d.year
     r[:numeric_month] = d.month
     r[:descriptive_month] = get_descriptive_month(d.month)
-    
+
     if defined? get_extra_date_info
       r = r.merge(get_extra_date_info(d))
     end
-    
+
     r
   end
-  
+
   def get_descriptive_date(d)
-    get_descriptive_day_in_week(d.cwday) + ', ' + d.day.to_s + ' de ' + 
+    get_descriptive_day_in_week(d.cwday) + ', ' + d.day.to_s + ' de ' +
       get_descriptive_month(d.month) + ' de ' + d.year.to_s
   end
-  
+
   def get_descriptive_day_in_week(wday)
     raise 'Invalid week day: ' + wday.to_s if wday < 1 or wday > 7
     case wday
@@ -65,7 +65,7 @@ class DateDimensionGenerator
       when 7 then 'Domingo'
     end
   end
-  
+
   def weekday?(wday)
     (wday > 0) and (wday < 6)
   end
@@ -73,7 +73,7 @@ class DateDimensionGenerator
   def weekend?(wday)
     (wday > 5)
   end
-  
+
   def get_descriptive_month(month)
     raise 'Invalid month' if month < 0 or month > 12
     case month
@@ -91,6 +91,5 @@ class DateDimensionGenerator
       when 12 then 'Dezembro'
     end
   end
-  
-end
 
+end

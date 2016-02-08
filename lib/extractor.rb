@@ -27,7 +27,7 @@ module Datawarehouse
       r = @origin_model.find(id)
       update_dimension_main_attributes(r)
     end
-    
+
     protected
 
     def ensure_nulls;end
@@ -47,14 +47,32 @@ module Datawarehouse
       r.send(field_name)
     end
 
+    def translate_field(r, params)
+      fn = params[:field_name]
+      v = translate_single_string(r, fn) if !(fn.include? '.')
+      v = translate_nested_string(r, fn) if (fn.include? '.')
+
+      default_value = params[:default_value]
+      if default_value.to_s.strip != ''
+        v = default_value if v.to_s.strip == ''
+      end
+      v
+    end
+
     def translate_function(rec, func_name)
       send(func_name, rec)
     end
 
-    def translate_date(rec, field_name)
+    def translate_date(rec, field_name, params = {})
       v = translate_nested_string(rec, field_name, nil)
       d = Datawarehouse::DateDimension.find_by_date(v.to_date)
-      raise "No date in Date Dimension for #{v.to_date.strftime('%d/%m/%Y')}" unless d
+      unless d
+        if params[:ignore_out_of_bounds]
+          d = Datawarehouse::DateDimension.find_by_date(nil)
+        else
+          raise "No date in Date Dimension for #{v.to_date.strftime('%d/%m/%Y')}" unless d
+        end
+      end
       d.id
     end
 
@@ -73,25 +91,59 @@ module Datawarehouse
 
     def get_translated_value(rec, params)
       r = ''
-      r = translate_single_string(rec, params) if (params.is_a? String) and !(params.include? '.')
-      r = translate_nested_string(rec, params) if (params.is_a? String) and (params.include? '.')
+      if params.is_a? String
+        r = translate_single_string(rec, params) if !(params.include? '.')
+        r = translate_nested_string(rec, params) if (params.include? '.')
+      end
       if params.is_a? Array
         p_type = params[0]
         r = translate_function(rec, params[1]) if p_type == :function
-        r = translate_date(rec, params[1]) if p_type == :date
+        r = translate_date(rec, params[1], {}) if p_type == :date
         r = translate_time(rec, params[1]) if p_type == :time
         r = translate_dimension(rec, params[1], params[2]) if p_type == :dimension
+        r = translate_with_default(rec, params[1], params[2]) if p_type == :with_default
+      end
+      if params.is_a? Hash
+        p_type = params[:type] || :field
+        r = translate_function(rec, params[:function_name]) if p_type == :function
+        r = translate_date(rec, params[:field_name], params) if p_type == :date
+        r = translate_time(rec, params[:field_name]) if p_type == :time
+        r = translate_dimension(rec, params[1], params[2]) if p_type == :dimension
+        r = translate_field(rec, params) if p_type == :field
+      end
+      r
+    end
+
+    def is_scd2?(config)
+      r = false
+      if config.is_a? Hash
+        r = config[:scd_type] == 2
       end
       r
     end
 
     def update_dimension_main_attributes(r)
-      dr = @destination_model.find_by_original_id(r.id)
-      dr = @destination_model.new unless dr
+      # 1 - monta hash de updates com key e o valor já traduzido e já
+      #     verifica se algum sd2 mudou
+      # 3 - se algum sd2 mudou OU o registro não existia, cria
+      # 4 - dá os sends como é feito hoje
+      any_scd2_changed = false
+      values = {}
+      dr = @destination_model.where(original_id: r.id).last
       @attribute_mappings.each_pair do |k, v|
-        dr.send(k.to_s + '=', get_translated_value(r, v))
+        values[k] = get_translated_value(r, v)
+        if dr && (is_scd2? @attribute_mappings[k])
+          any_scd2_changed ||= values[k] != dr.send(k.to_s)
+        end
+      end
+      if (!dr) || (any_scd2_changed)
+        dr = @destination_model.new
+      end
+      @attribute_mappings.each_pair do |k, v|
+        dr.send(k.to_s + '=', values[k])
       end
       dr.save
+
     end
 
     def last_version
@@ -113,10 +165,9 @@ module Datawarehouse
   #get new and updated records, considering only the main model from the dimension
     def get_new_records
       conditions = get_conditions
-      @origin_model.all(
-          :conditions => conditions,
-          :order => 'version ASC',
-          :limit => max_records)
+      @origin_model.where(conditions).
+          order('version ASC').
+          limit(max_records).all
     end
   end
 end
