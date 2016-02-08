@@ -10,14 +10,14 @@ It´s main features are:
 * DateDimension basic generation class
 * TimeDimension basic generation class
 * Dimension extractor basic class
-* Handle of slowly changing dimensions of type 1
+* Handle of slowly changing dimensions of types 1 and 2
 * Fact extractor basic class
 * Migration of the datawarehouse database with sepparate migrations from transactional database
 
 Prerequisites
 =====
 
-* You should be using Activerecord, needless to say that right?
+* You should be using Activerecord
 * You should be using Activerecord id patterns, not natural primary keys
 * Every record have to have a version control, meaning it have a integer field that is incremented for every inclusion and change in the record. That is usefull to the extractors to know what has changed since last extraction.
 
@@ -69,7 +69,7 @@ Product
   department_id
   main_product_id
   version
-  
+
 Department
   name
 ```
@@ -157,15 +157,15 @@ module Datawarehouse
       def initialize
         @origin_model = Product #from wich model at the transactional database we will be extracting
         @destination_model = ProductDimension #to wich model in the datawarehouse database we will be extracting
-        
+
         @attribute_mappings = {
-            description: 'description',
+            description: {field_name: 'description', default_value: '<unset>'},
             code: 'code',
             barcode: 'barcode',
             original_id: 'id',
             version: 'version',
             store_chain_id: 'store_chain_id',
-            is_dimensioned: [:function, 'is_dimensioned?'],
+            is_dimensioned: {type: :function, function_name: 'is_dimensioned?'},
             department_name: 'department.name',
             department_id: 'department_id',
         }
@@ -182,13 +182,29 @@ end
 
 As you can imagine, the key here is in the @attribute_mappings attribute. It is a hash that defines how data is extracted from the transactional model to the datawarehouse model. It has some types:
 
-* Single: Defined as a simple string, it goes directly to an attribute of the class. It supports nested attributes, so you can use belongs_tos in here. Like in the department.name example.
-* Date: Refers to the date dimension. It is defined as an array of 2 elements where the first one is the type :date and the second one is the name of the date field. The gem will find the proper date dimension record to link to.
-* Time: Same as date, but to the Time Dimension
-* Dimension: When it refers to another dimension.
-* Function: Last resource, you want to write a funcion to get this field value. Your function will receive the entire record to handle as it wished. Look at is_dimensioned? above.
+* field: It's the default type, can be defined as a single string or via a config Hash. Could be the name of an attribute or nested attributes, so you can use belongs_to, has_many and has_one in here. Like in the department.name example. This kind of attribute supports a default_value key.
+* date: Refers to the date dimension. It is defined as an array of 2 elements where the first one is the type :date and the second one is the name of the date field. The gem will find the proper date dimension record to link to.
+* time: Same as date, but to the Time Dimension
+* dimension: When it refers to another dimension.
+* function: Last resource, you want to write a funcion to get this field value. Your function will receive the entire record to handle as it wished. Look at is_dimensioned? above.
 
-Slowly changing dimensions type 1
+Slowly Changing Dimensions
+==========
+
+By defalut all attributes are managed like SCD type 1. If you want it to be treated as SCD type 2 set the key scd_type to 2. When an attribute is of type 2, the extractor will:
+
+1 - Find out if on an update any scd type 2 attributes has changed
+If any scd type 2 has changed it will
+  1.1 - Create a new record
+  1.2 - If there is a valid_from field on the dimension it will fill it with the updated_at date of the original record
+  1.3 - If there is a valid_until field on the dimension it will fill the last valid record with the updated_at date of the original record
+  1.4 - If there is a is_last_version field on the dimension it will fill the new record with true and all other records that represents the same dimension value to false
+Else
+  1.1 - Update all attributes from the last valid record for this dimension value or create a new record if it doesn't exist
+
+
+
+Track changes in nested Models (SCD1 supported)
 ==========
 
 activerecord_datawarehouse provides a class named SlowlyChangingDimension1. It is intended to handle this kind of changing dimensions.

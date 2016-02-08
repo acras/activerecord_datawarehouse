@@ -136,14 +136,22 @@ module Datawarehouse
           any_scd2_changed ||= values[k] != dr.send(k.to_s)
         end
       end
-      if (!dr) || (any_scd2_changed)
-        dr = @destination_model.new
+      ActiveRecord::Base.transaction do
+        if (!dr) || (any_scd2_changed)
+          if dr
+            #indicar que o registro encontrado não é mais o válido
+            dr.is_last_version = false
+            dr.save
+          end
+          #criar o novo
+          dr = @destination_model.new
+          dr.is_last_version = true
+        end
+        @attribute_mappings.each_pair do |k, v|
+          dr.send(k.to_s + '=', values[k])
+        end
+        dr.save
       end
-      @attribute_mappings.each_pair do |k, v|
-        dr.send(k.to_s + '=', values[k])
-      end
-      dr.save
-
     end
 
     def last_version
