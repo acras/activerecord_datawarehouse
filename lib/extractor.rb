@@ -140,7 +140,7 @@ module Datawarehouse
         if (!dr) || (any_scd2_changed)
           if dr
             #indicar que o registro encontrado não é mais o válido
-            dr.is_last_version = false
+            dr.is_last_version = false if dr.respond_to? 'is_last_version'
             dr.save
           end
           #criar o novo
