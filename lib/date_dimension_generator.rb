@@ -6,7 +6,7 @@ class DateDimensionGenerator
 
   def generate
     #criar a data nula
-    @dimension_class.create(:descriptive_date => 'Data não informada') unless @dimension_class.where(date: nil)
+    @dimension_class.create(:descriptive_date => 'Data não informada') unless @dimension_class.exists?(date: nil)
     #criar as datas na faixa solicitada
     initial_date.upto(final_date) do |d|
       puts '--Generating ' + d.strftime('%d/%m/%Y') + '--'
