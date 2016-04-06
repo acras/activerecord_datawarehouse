@@ -66,13 +66,11 @@ module Datawarehouse
     def translate_date(rec, field_name, params = {})
       v = translate_nested_string(rec, field_name, nil)
       d = Datawarehouse::DateDimension.find_by_date(v.try :to_date)
-      unless d
-        if params[:ignore_out_of_bounds]
-          d = Datawarehouse::DateDimension.find_by_date(nil)
-        else
-          raise "No date in Date Dimension for #{v.try(:to_date).try(:strftime ,'%d/%m/%Y')}" unless d
-        end
+      if !d && params[:ignore_out_of_bounds]
+        d = Datawarehouse::DateDimension.find_by_date(nil)
+        raise "No date in Date Dimension for #{v.try(:to_date).try(:strftime ,'%d/%m/%Y')} nor for the nil date" unless d
       end
+      raise "No date in Date Dimension for #{v.try(:to_date).try(:strftime ,'%d/%m/%Y')}" unless d
       d.id
     end
 
