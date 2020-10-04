@@ -143,7 +143,7 @@ module Datawarehouse
           end
           #criar o novo
           dr = @destination_model.new
-          dr.is_last_version = true
+          dr.is_last_version = true if dr.respond_to? 'is_last_version'
         end
         @attribute_mappings.each_pair do |k, v|
           dr.send(k.to_s + '=', values[k])
@@ -153,7 +153,7 @@ module Datawarehouse
     end
 
     def last_version
-      @destination_model.maximum(:version, :conditions => get_max_conditions) || 0
+      @destination_model.where(get_max_conditions).maximum(:version) || 0
     end
 
     def get_max_conditions

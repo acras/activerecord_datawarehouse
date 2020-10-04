@@ -18,14 +18,14 @@ class SlowlyChangingDimension1
     mappings.each do |mapping|
       value = r.send(mapping[3])
       mapping[0].update_all(
-          ["#{mapping[2]} = ?", value],
-          ["#{mapping[1]} = ?", r.id])
+          {"#{mapping[2]}" => value,
+           "#{mapping[1]}" => r.id})
     end
     set_or_create(r.class, r.version)
   end
 
   def get_new_records(model_class)
-    model_class.all(:conditions => get_conditions(model_class), :order => 'version ASC')
+    model_class.where(get_conditions(model_class)).order('version ASC').all
   end
 
   def get_conditions(model_class)
@@ -52,7 +52,7 @@ class SlowlyChangingDimension1
 
   def get_record_by_model(model_class)
     tn = model_class.table_name
-    Datawarehouse::LastVersionMap.first(:conditions => ['table_name like ?', tn])
+    Datawarehouse::LastVersionMap.where(['table_name like ?', tn]).first
   end
 
 end
